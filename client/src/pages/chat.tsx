@@ -140,16 +140,18 @@ export default function Chat() {
               <i className="fas fa-comments text-white text-lg"></i>
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-secondary">Anonymous Chat</h1>
-              <p className="text-sm text-gray-500">Connect with random strangers worldwide</p>
+              <h1 className="text-xl font-semibold text-secondary">AnonyMous Chat</h1>
+              <p className="text-sm text-gray-500">Connect with random strangers</p>
             </div>
           </div>
-          
           <div className="flex items-center space-x-2 bg-success/10 px-3 py-1 rounded-full">
             <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
             <span className="text-sm font-medium text-success">
               {onlineUsers.toLocaleString()} online
             </span>
+          </div>
+          <div>
+            <a href="/about" className="hover:text-secondary">About Me</a>
           </div>
         </div>
       </header>
@@ -163,11 +165,11 @@ export default function Chat() {
       <footer className="bg-surface border-t border-gray-200 px-4 py-4">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600">
           <div className="flex items-center space-x-4">
-            <span>© 2024 Anonymous Chat</span>
-            <span>•</span>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Privacy Policy</a>
-            <span>•</span>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Terms of Service</a>
+            <span>© 2025 Manojkumar B G</span>
+            {/* <span>•</span> */}
+            {/* <a href="#" className="hover:text-primary transition-colors duration-200">Privacy Policy</a> */}
+            {/* <span>•</span> */}
+            {/* <a href="#" className="hover:text-primary transition-colors duration-200">Terms of Service</a> */}
           </div>
           
           <div className="flex items-center space-x-4 text-xs">

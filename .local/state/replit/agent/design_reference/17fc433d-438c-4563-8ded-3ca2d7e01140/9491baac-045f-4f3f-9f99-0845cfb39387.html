@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Chat - Connect with Random Strangers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#1976D2',
+                        secondary: '#424242',
+                        success: '#4CAF50',
+                        warning: '#FF9800',
+                        error: '#F44336',
+                        surface: '#FFFFFF',
+                        background: '#FAFAFA',
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 2s infinite',
+                        'pulse-slow': 'pulse 3s infinite',
+                        'typing': 'typing 1.5s infinite',
+                    },
+                    keyframes: {
+                        typing: {
+                            '0%, 60%': { opacity: '1' },
+                            '30%': { opacity: '0.4' },
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .chat-bubble-sent {
+            background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+        }
+        .chat-bubble-received {
+            background: linear-gradient(135deg, #F5F5F5 0%, #EEEEEE 100%);
+        }
+        .message-animation {
+            animation: slideInUp 0.3s ease-out;
+        }
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-background font-inter min-h-screen">
+    
+    <!-- @COMPONENT: AppContainer [Main application wrapper] -->
+    <div class="min-h-screen flex flex-col">
+        
+        <!-- @COMPONENT: Header [Application header with branding] -->
+        <header class="bg-surface shadow-sm border-b border-gray-200 px-4 py-4">
+            <div class="max-w-4xl mx-auto flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center">
+                        <i class="fas fa-comments text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-semibold text-secondary">Anonymous Chat</h1>
+                        <p class="text-sm text-gray-500">Connect with random strangers worldwide</p>
+                    </div>
+                </div>
+                
+                <!-- @COMPONENT: ConnectionStatus [Shows online users count] -->
+                <div class="flex items-center space-x-2 bg-success/10 px-3 py-1 rounded-full">
+                    <div class="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                    <span class="text-sm font-medium text-success" data-bind="onlineUsers">1,247 online</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- @COMPONENT: MainChatArea [Primary chat interface] -->
+        <main class="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+            
+            <!-- @COMPONENT: WelcomeScreen [Initial state before matching] -->
+            <div id="welcome-screen" class="flex-1 flex flex-col items-center justify-center px-4 py-12">
+                <div class="text-center max-w-md">
+                    <!-- Welcome illustration placeholder -->
+                    <div class="mb-8">
+                        <div class="w-24 h-24 bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-user-friends text-primary text-3xl"></i>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-semibold text-secondary mb-4">Ready to Chat?</h2>
+                    <p class="text-gray-600 mb-8 leading-relaxed">
+                        Connect with a random stranger for an anonymous conversation. 
+                        No registration required - just click start and begin chatting!
+                    </p>
+                    
+                    <!-- @COMPONENT: StartButton [Initiates matchmaking] -->
+                    <button 
+                        data-event="click:startMatching" 
+                        data-implementation="Should initialize WebSocket connection and join matchmaking queue"
+                        class="bg-primary hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center space-x-3 mx-auto"
+                    >
+                        <i class="fas fa-play text-lg"></i>
+                        <span class="text-lg">Start Chatting</span>
+                    </button>
+                    
+                    <div class="mt-6 flex items-center justify-center space-x-6 text-sm text-gray-500">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-shield-alt text-success"></i>
+                            <span>Anonymous</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-bolt text-warning"></i>
+                            <span>Real-time</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-trash-alt text-error"></i>
+                            <span>No logs</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- @COMPONENT: MatchingScreen [Waiting state during partner search] -->
+            <div id="matching-screen" class="flex-1 flex flex-col items-center justify-center px-4 py-12 hidden">
+                <div class="text-center max-w-md">
+                    <div class="mb-8">
+                        <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    </div>
+                    
+                    <h2 class="text-xl font-semibold text-secondary mb-4">Finding a chat partner...</h2>
+                    <p class="text-gray-600 mb-8">
+                        Please wait while we connect you with someone interesting to talk to.
+                    </p>
+                    
+                    <!-- @COMPONENT: CancelButton [Cancels matchmaking] -->
+                    <button 
+                        data-event="click:cancelMatching"
+                        data-implementation="Should disconnect from matchmaking queue and return to welcome screen"
+                        class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200"
+                    >
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </button>
+                    
+                    <div class="mt-8 flex justify-center space-x-1">
+                        <div class="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- @COMPONENT: ChatInterface [Active chat session] -->
+            <div id="chat-interface" class="flex-1 flex flex-col hidden">
+                
+                <!-- @COMPONENT: ChatHeader [Chat session info and controls] -->
+                <div class="bg-surface border-b border-gray-200 px-4 py-3 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-gradient-to-br from-success to-green-500 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-secondary">Connected to Stranger</h3>
+                                <div class="flex items-center space-x-2 text-sm text-success">
+                                    <div class="w-2 h-2 bg-success rounded-full"></div>
+                                    <span data-bind="connectionStatus">Online</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- @COMPONENT: ChatControls [Action buttons during chat] -->
+                        <div class="flex items-center space-x-3">
+                            <!-- @COMPONENT: NextButton [Skip to next partner] -->
+                            <button 
+                                data-event="click:nextPartner"
+                                data-implementation="Should leave current chat and find new partner"
+                                class="bg-warning hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 flex items-center space-x-2"
+                                title="Find new partner"
+                            >
+                                <i class="fas fa-forward text-sm"></i>
+                                <span>Next</span>
+                            </button>
+                            
+                            <!-- @COMPONENT: LeaveButton [Disconnect from chat] -->
+                            <button 
+                                data-event="click:leaveChat"
+                                data-implementation="Should disconnect from current chat and return to welcome screen"
+                                class="bg-error hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 flex items-center space-x-2"
+                            >
+                                <i class="fas fa-sign-out-alt text-sm"></i>
+                                <span>Leave</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- @COMPONENT: MessagesContainer [Chat messages display area] -->
+                <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-implementation="Should auto-scroll to bottom on new messages">
+                    <!-- @STATE: messages:Array = [] -->
+                    <!-- @FUNCTIONALITY: This area displays chat messages in real-time with WebSocket -->
+                    
+                    <!-- @MAP: messages.map(message => ( -->
+                    
+                    <!-- Sample received message -->
+                    <div class="flex items-start space-x-3 message-animation" data-mock="true">
+                        <div class="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user text-white text-xs"></i>
+                        </div>
+                        <div class="max-w-xs lg:max-w-md">
+                            <div class="chat-bubble-received text-secondary px-4 py-3 rounded-2xl rounded-tl-none shadow-sm">
+                                <p data-bind="message.content">Hey! How's it going?</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1 px-2" data-bind="message.timestamp">2:34 PM</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Sample sent message -->
+                    <div class="flex items-start space-x-3 justify-end message-animation" data-mock="true">
+                        <div class="max-w-xs lg:max-w-md">
+                            <div class="chat-bubble-sent text-white px-4 py-3 rounded-2xl rounded-tr-none shadow-sm">
+                                <p data-bind="message.content">Pretty good! Just exploring this chat app. How about you?</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1 px-2 text-right" data-bind="message.timestamp">2:35 PM</p>
+                        </div>
+                        <div class="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user text-white text-xs"></i>
+                        </div>
+                    </div>
+
+                    <!-- Another received message -->
+                    <div class="flex items-start space-x-3 message-animation" data-mock="true">
+                        <div class="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user text-white text-xs"></i>
+                        </div>
+                        <div class="max-w-xs lg:max-w-md">
+                            <div class="chat-bubble-received text-secondary px-4 py-3 rounded-2xl rounded-tl-none shadow-sm">
+                                <p data-bind="message.content">Same here! It's pretty cool how instant this is. Where are you from?</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1 px-2" data-bind="message.timestamp">2:36 PM</p>
+                        </div>
+                    </div>
+
+                    <!-- @COMPONENT: TypingIndicator [Shows when partner is typing] -->
+                    <div id="typing-indicator" class="flex items-start space-x-3 hidden" data-implementation="Should show/hide based on partner typing status">
+                        <div class="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user text-white text-xs"></i>
+                        </div>
+                        <div class="bg-gray-100 px-4 py-3 rounded-2xl rounded-tl-none">
+                            <div class="flex space-x-1">
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-typing"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-typing" style="animation-delay: 0.2s"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-typing" style="animation-delay: 0.4s"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- @END_MAP )) -->
+                </div>
+
+                <!-- @COMPONENT: MessageInput [Text input and send controls] -->
+                <div class="bg-surface border-t border-gray-200 px-4 py-4 shadow-lg">
+                    <div class="flex items-center space-x-3">
+                        <!-- @COMPONENT: TextInput [Message composition field] -->
+                        <div class="flex-1 relative">
+                            <input 
+                                type="text" 
+                                data-bind="messageInput"
+                                data-event="keypress:handleKeyPress,input:handleTyping"
+                                data-implementation="Should handle Enter key to send, trigger typing indicators"
+                                placeholder="Type your message..." 
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                                maxlength="500"
+                            />
+                            <!-- Character counter -->
+                            <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <span class="text-xs text-gray-400" data-bind="messageLength">0/500</span>
+                            </div>
+                        </div>
+                        
+                        <!-- @COMPONENT: SendButton [Sends message] -->
+                        <button 
+                            data-event="click:sendMessage"
+                            data-implementation="Should validate message, emit via WebSocket, and clear input"
+                            class="bg-primary hover:bg-blue-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                        >
+                            <i class="fas fa-paper-plane text-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- @COMPONENT: QuickActions [Quick response buttons] -->
+                    <div class="mt-3 flex flex-wrap gap-2" data-implementation="Optional quick response buttons">
+                        <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm transition-all duration-200" data-mock="true">
+                            👋 Hello
+                        </button>
+                        <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm transition-all duration-200" data-mock="true">
+                            😊 Nice to meet you
+                        </button>
+                        <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm transition-all duration-200" data-mock="true">
+                            👍 Cool
+                        </button>
+                        <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm transition-all duration-200" data-mock="true">
+                            🤔 Interesting
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- @COMPONENT: DisconnectedScreen [Shown when partner leaves] -->
+            <div id="disconnected-screen" class="flex-1 flex flex-col items-center justify-center px-4 py-12 hidden">
+                <div class="text-center max-w-md">
+                    <div class="mb-8">
+                        <div class="w-16 h-16 bg-error/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-user-times text-error text-2xl"></i>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-xl font-semibold text-secondary mb-4">Partner Disconnected</h2>
+                    <p class="text-gray-600 mb-8">
+                        Your chat partner has left the conversation. Would you like to find someone new to chat with?
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                        <!-- @COMPONENT: FindNewButton [Start new chat search] -->
+                        <button 
+                            data-event="click:findNewPartner"
+                            data-implementation="Should clear current chat and start new matchmaking"
+                            class="bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                        >
+                            <i class="fas fa-search"></i>
+                            <span>Find New Partner</span>
+                        </button>
+                        
+                        <!-- @COMPONENT: BackToHomeButton [Return to welcome] -->
+                        <button 
+                            data-event="click:backToHome"
+                            data-implementation="Should return to welcome screen"
+                            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                        >
+                            <i class="fas fa-home"></i>
+                            <span>Back to Home</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- @COMPONENT: Footer [Application footer with info] -->
+        <footer class="bg-surface border-t border-gray-200 px-4 py-4">
+            <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600">
+                <div class="flex items-center space-x-4">
+                    <span>© 2024 Anonymous Chat</span>
+                    <span>•</span>
+                    <a href="#" class="hover:text-primary transition-colors duration-200">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#" class="hover:text-primary transition-colors duration-200">Terms of Service</a>
+                </div>
+                
+                <div class="flex items-center space-x-4 text-xs">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-shield-alt text-success"></i>
+                        <span>Messages are not stored</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-clock text-primary"></i>
+                        <span>Real-time communication</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <!-- @END_COMPONENT: AppContainer -->
+
+    <!-- @COMPONENT: NotificationToast [System notifications] -->
+    <div id="notification-toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-surface shadow-lg rounded-lg border border-gray-200 p-4 max-w-sm">
+            <div class="flex items-center space-x-3">
+                <div id="toast-icon" class="w-8 h-8 rounded-full flex items-center justify-center">
+                    <!-- Dynamic icon based on notification type -->
+                </div>
+                <div class="flex-1">
+                    <p id="toast-message" class="text-sm font-medium text-secondary" data-bind="notificationMessage">Notification message</p>
+                </div>
+                <button id="toast-close" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // TODO: Implement WebSocket connection and real-time messaging
+            // TODO: Implement matchmaking queue logic
+            // TODO: Implement room creation and message routing
+            // TODO: Implement disconnect handling and cleanup
+            // TODO: Implement typing indicators
+            // TODO: Implement message history management
+            
+            // Demo state management for UI interactions
+            let currentScreen = 'welcome';
+            let isConnected = false;
+            let messageCount = 0;
+            
+            // Screen management
+            function showScreen(screenName) {
+                document.querySelectorAll('[id$="-screen"], #chat-interface').forEach(screen => {
+                    screen.classList.add('hidden');
+                });
+                
+                const targetScreen = document.getElementById(screenName === 'chat' ? 'chat-interface' : screenName + '-screen');
+                if (targetScreen) {
+                    targetScreen.classList.remove('hidden');
+                }
+                currentScreen = screenName;
+            }
+            
+            // Message input handling
+            const messageInput = document.querySelector('input[data-bind="messageInput"]');
+            const sendButton = document.querySelector('button[data-event*="sendMessage"]');
+            const messagesContainer = document.querySelector('.overflow-y-auto');
+            
+            if (messageInput && sendButton) {
+                messageInput.addEventListener('input', function() {
+                    sendButton.disabled = this.value.trim().length === 0;
+                    // Update character counter
+                    const counter = document.querySelector('[data-bind="messageLength"]');
+                    if (counter) {
+                        counter.textContent = this.value.length + '/500';
+                    }
+                });
+                
+                messageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && !sendButton.disabled) {
+                        // TODO: Implement actual message sending via WebSocket
+                        console.log('Message sent:', this.value);
+                        this.value = '';
+                        sendButton.disabled = true;
+                    }
+                });
+            }
+            
+            // Button event listeners for demo
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('button[data-event*="click"]');
+                if (!target) return;
+                
+                const event = target.getAttribute('data-event');
+                
+                if (event.includes('startMatching')) {
+                    showScreen('matching');
+                    // Simulate finding partner after 3 seconds
+                    setTimeout(() => {
+                        showScreen('chat');
+                        showNotification('Connected to a stranger!', 'success');
+                    }, 3000);
+                }
+                
+                if (event.includes('cancelMatching')) {
+                    showScreen('welcome');
+                }
+                
+                if (event.includes('leaveChat')) {
+                    showScreen('welcome');
+                    showNotification('You left the chat', 'info');
+                }
+                
+                if (event.includes('nextPartner')) {
+                    showScreen('matching');
+                    showNotification('Finding new partner...', 'info');
+                    // Simulate finding new partner
+                    setTimeout(() => {
+                        showScreen('chat');
+                        showNotification('Connected to a new stranger!', 'success');
+                    }, 2000);
+                }
+                
+                if (event.includes('findNewPartner')) {
+                    showScreen('matching');
+                    // Simulate finding partner
+                    setTimeout(() => {
+                        showScreen('chat');
+                        showNotification('Connected to a stranger!', 'success');
+                    }, 2500);
+                }
+                
+                if (event.includes('backToHome')) {
+                    showScreen('welcome');
+                }
+            });
+            
+            // Notification system
+            function showNotification(message, type = 'info') {
+                const toast = document.getElementById('notification-toast');
+                const messageEl = document.getElementById('toast-message');
+                const iconEl = document.getElementById('toast-icon');
+                
+                if (toast && messageEl && iconEl) {
+                    messageEl.textContent = message;
+                    
+                    // Set icon based on type
+                    let iconHTML = '';
+                    let bgClass = '';
+                    
+                    switch (type) {
+                        case 'success':
+                            iconHTML = '<i class="fas fa-check text-white"></i>';
+                            bgClass = 'bg-success';
+                            break;
+                        case 'error':
+                            iconHTML = '<i class="fas fa-exclamation-triangle text-white"></i>';
+                            bgClass = 'bg-error';
+                            break;
+                        case 'warning':
+                            iconHTML = '<i class="fas fa-exclamation text-white"></i>';
+                            bgClass = 'bg-warning';
+                            break;
+                        default:
+                            iconHTML = '<i class="fas fa-info text-white"></i>';
+                            bgClass = 'bg-primary';
+                    }
+                    
+                    iconEl.className = `w-8 h-8 rounded-full flex items-center justify-center ${bgClass}`;
+                    iconEl.innerHTML = iconHTML;
+                    
+                    toast.classList.remove('hidden');
+                    
+                    // Auto-hide after 3 seconds
+                    setTimeout(() => {
+                        toast.classList.add('hidden');
+                    }, 3000);
+                }
+            }
+            
+            // Close toast on click
+            document.getElementById('toast-close')?.addEventListener('click', function() {
+                document.getElementById('notification-toast').classList.add('hidden');
+            });
+            
+            // Simulate typing indicator for demo
+            if (messageInput) {
+                let typingTimeout;
+                messageInput.addEventListener('input', function() {
+                    // Show partner typing indicator occasionally for demo
+                    if (Math.random() > 0.8 && currentScreen === 'chat') {
+                        const typingIndicator = document.getElementById('typing-indicator');
+                        if (typingIndicator) {
+                            typingIndicator.classList.remove('hidden');
+                            clearTimeout(typingTimeout);
+                            typingTimeout = setTimeout(() => {
+                                typingIndicator.classList.add('hidden');
+                            }, 2000);
+                        }
+                    }
+                });
+            }
+            
+            // Auto-scroll chat to bottom
+            function scrollToBottom() {
+                if (messagesContainer) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            }
+            
+            // Initialize
+            showScreen('welcome');
+            
+            // Simulate random online user count updates
+            setInterval(() => {
+                const onlineEl = document.querySelector('[data-bind="onlineUsers"]');
+                if (onlineEl) {
+                    const count = Math.floor(Math.random() * 500) + 1000;
+                    onlineEl.textContent = count.toLocaleString() + ' online';
+                }
+            }, 10000);
+        })();
+    </script>
+</body>
+</html>
