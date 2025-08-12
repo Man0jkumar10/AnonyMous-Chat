@@ -1,0 +1,69 @@
+I want you to build me a real-time anonymous random chat application like Omegle, but only with text chat (no accounts).
+
+Requirements:
+
+When a user opens the site, they click a "Start" button to find a random partner.
+
+The backend matches them with another waiting user and creates a private chat room.
+
+Messages are sent instantly in real-time using WebSockets.
+
+When either person leaves, the chat room is destroyed and all messages are erased from memory (no database storage).
+
+There should be a "Leave" button that disconnects from the current chat and optionally lets them search for a new partner.
+
+Keep the code simple and modular, using proper folder structure.
+
+Use only temporary in-memory data for matching users.
+
+Frontend should have a minimal UI with:
+
+Chat area showing sent/received messages
+
+Input field and Send button
+
+Start Chat & Leave Chat buttons
+
+Show "Waiting for a partner..." while searching
+
+Must work in real-time with low latency.
+
+Technologies to use:
+
+Frontend: React.js, Socket.IO client, TailwindCSS for styling
+
+Backend: Node.js, Express.js, Socket.IO for real-time messaging
+
+Hosting: Node backend can run on Render/Heroku, React frontend can be deployed on Vercel/Netlify
+
+No database (store active chats only in server memory)
+
+Features to implement:
+
+Matchmaking system: use a simple queue to store one waiting user at a time
+
+Room creation: when two users match, create a room ID and join both users to it
+
+Real-time chat: emit message events to both users in the same room
+
+Disconnect handling: if one user leaves, inform the other and destroy the room
+
+Auto-cleanup: ensure memory is cleared when users leave or disconnect
+
+Deliverables:
+
+server.js file for backend with matchmaking and chat logic
+
+client/ folder for React app with components for Start, Chat, and Leave functionality
+
+Code should be ready to run locally (npm install then npm start)
+
+Use clear comments for important logic parts
+
+Extra (optional):
+
+Add a "Next" button to skip current partner and find a new one
+
+Add typing indicators ("User is typing...")
+
+Add chat time limit per session
